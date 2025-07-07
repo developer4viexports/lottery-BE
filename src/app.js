@@ -77,7 +77,7 @@ sequelize.authenticate()
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      
+
     });
   })
   .catch((err) => {
@@ -87,3 +87,5 @@ sequelize.authenticate()
 
 // Error handler middleware (must be last)
 app.use(errorHandler);
+
+export default app; // Export the app for testing or other purposes
