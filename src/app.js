@@ -90,3 +90,5 @@ sequelize.authenticate()
 
 // Error handler middleware (must be last)
 app.use(errorHandler);
+
+export default app; // Export the app for testing or other purposes
