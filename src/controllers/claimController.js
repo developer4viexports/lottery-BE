@@ -2,12 +2,43 @@ import { Claim } from '../models/index.js';
 
 export const submitClaim = async (req, res, next) => {
     try {
-        const newClaim = await Claim.create(req.body);
-        res.status(201).json({ message: 'Claim submitted successfully!' });
+        const body = req.body || {}; // Prevent undefined destructuring
+
+        const {
+            ticketID,
+            name,
+            email,
+            phone,
+            instagram,
+            countryCode
+        } = body;
+
+        const ticketImage = req.files?.ticketImage?.[0]?.filename
+            ? `/uploads/${req.files.ticketImage[0].filename}`
+            : '';
+
+        const proofImage = req.files?.proofImage?.[0]?.filename
+            ? `/uploads/${req.files.proofImage[0].filename}`
+            : '';
+
+        const newClaim = await Claim.create({
+            ticketID,
+            name,
+            email,
+            phone,
+            instagram,
+            countryCode,
+            ticketImage,
+            proofImage,
+        });
+
+        res.status(201).json({ success: true, message: 'Claim submitted successfully!' });
     } catch (err) {
+        console.error('Submit claim error:', err);
         next(err);
     }
 };
+
 
 export const getClaims = async (req, res, next) => {
     try {

@@ -43,6 +43,26 @@ export default function TicketModel(sequelize, DataTypes) {
         proofImage: {
             type: DataTypes.STRING,
         },
+        isSuperTicket: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        },
+        purchaseProof: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        prizeType: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            validate: {
+                isIn: [['Grand', 'Silver', 'Bronze', 'Consolation']],
+            },
+        },
+        followProof: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+
     }, {
         timestamps: true,
     });

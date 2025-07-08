@@ -10,6 +10,7 @@ import winningTickets from './routes/winningTickets.js';
 import adminRoutes from './routes/adminRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
+import winningComboRoutes from './routes/winningComboRoutes.js';
 
 import { sequelize } from './models/index.js'; // ⬅️ Sequelize setup
 import './models/Admin.js';
@@ -33,6 +34,7 @@ app.use('/api', routes);
 app.use('/api/winners', winningTickets);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', ticketRoutes);
+app.use('/api/winning-combo', winningComboRoutes);
 
 // File preview (images/videos/pdfs)
 app.get('/uploads/:filename', (req, res) => {
@@ -77,10 +79,11 @@ sequelize.authenticate()
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      
+
     });
   })
   .catch((err) => {
+
     console.error('❌ DB connection failed:', err);
     process.exit(1);
   });

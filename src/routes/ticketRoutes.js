@@ -9,7 +9,19 @@ const router = express.Router();
 /* ─────────────── PUBLIC ROUTES ─────────────── */
 
 // User submits ticket with image
-router.post('/tickets', upload.single('file'), createTicket);
+router.post('/tickets', upload.fields([
+    { name: 'file', maxCount: 1 },         // This 'file' matches the 'name' attribute of the main file input in LandingForm.jsx
+    { name: 'purchaseProof', maxCount: 1 }, // This 'purchaseProof' matches the 'name' attribute of the purchaseProof file input in LandingForm.jsx
+    { name: 'followProof', maxCount: 1 } // ✅ NEW 
+]),
+    createTicket
+);
+
+// ✅ User submits claim form with files
+router.post('/claims', upload.fields([
+    { name: 'ticketImage', maxCount: 1 },
+    { name: 'proofImage', maxCount: 1 }
+]), submitClaim);
 
 // User submits claim form
 router.post('/claims', submitClaim);
