@@ -95,7 +95,7 @@ async function createNonWinningTicket(i) {
     });
 }
 
-async function main(count = 10000) {
+async function main(count = 1000) {
     try {
         await sequelize.authenticate();
         console.log('✅ Connected to DB');

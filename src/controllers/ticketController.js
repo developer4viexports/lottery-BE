@@ -22,6 +22,7 @@ function countMatches(arr1, arr2) {
     return arr1.filter(num => arr2.includes(num)).length;
 }
 
+// Create Ticket
 export const createTicket = async (req, res) => {
     try {
         const {
@@ -29,12 +30,12 @@ export const createTicket = async (req, res) => {
             issueDate, expiryDate, isSuperTicket
         } = req.body;
 
-        const proofImage = req.files?.file?.[0] ? `/uploads/${req.files.file[0].filename}` : ''; // ✅ match "file"
-        const purchaseProof = req.files?.purchaseProof?.[0] ? `/uploads/${req.files.purchaseProof[0].filename}` : '';
+        const proofImage = req.files?.file?.[0]
+            ? `/uploads/${req.files.file[0].filename}` : '';
+        const purchaseProof = req.files?.purchaseProof?.[0]
+            ? `/uploads/${req.files.purchaseProof[0].filename}` : '';
         const followProof = req.files?.followProof?.[0]
-            ? `/uploads/${req.files.followProof[0].filename}`
-            : '';
-
+            ? `/uploads/${req.files.followProof[0].filename}` : '';
 
         // Check for duplicate phone/email/instagram
         const existingTicket = await Ticket.findOne({
@@ -59,12 +60,17 @@ export const createTicket = async (req, res) => {
             ticketIDExists = await Ticket.findOne({ where: { ticketID } });
         } while (ticketIDExists);
 
-        const winningCombo = await WinningCombination.findOne();
+        // Get active competition or fallback to latest ended one
+        let winningCombo = await WinningCombination.findOne({ where: { status: 'active' }, order: [['createdAt', 'DESC']] });
+        if (!winningCombo) {
+            winningCombo = await WinningCombination.findOne({ where: { status: 'ended' }, order: [['createdAt', 'DESC']] });
+        }
+
         let numbers, prizeType = null;
+        const winningCombinationId = winningCombo?.id || null;
 
         if (winningCombo) {
             let isValid = false;
-
             while (!isValid) {
                 numbers = generateTicketNumbers();
                 const matchCount = countMatches(numbers, winningCombo.numbers);
@@ -86,16 +92,13 @@ export const createTicket = async (req, res) => {
                     winningCombo.consolationWinners += 1;
                     isValid = true;
                 } else if (matchCount < 4) {
-                    // Does not qualify for any prize — valid
                     isValid = true;
                 }
-
-                // If prize was eligible but quota full, retry loop to generate a new set
             }
 
             await winningCombo.save();
         } else {
-            // No combination found, just generate a random set of numbers
+            // No competition fallback
             numbers = generateTicketNumbers();
         }
 
@@ -110,9 +113,10 @@ export const createTicket = async (req, res) => {
             expiryDate,
             proofImage,
             purchaseProof,
-            followProof, // ✅ NEW
+            followProof,
             isSuperTicket: isSuperTicket === '1' || isSuperTicket === true || isSuperTicket === 'true',
-            prizeType
+            prizeType,
+            winningCombinationId
         });
 
         return res.status(201).json({ success: true, data: newTicket });
@@ -123,14 +127,50 @@ export const createTicket = async (req, res) => {
     }
 };
 
-export const getAllTickets = async (req, res, next) => {
+// Get All Tickets (only from active or latest ended competition)
+export const getAllTickets = async (req, res) => {
     try {
-        const tickets = await Ticket.findAll({
+        let competition = await WinningCombination.findOne({
+            where: { status: 'active' },
             order: [['createdAt', 'DESC']]
         });
-        res.json({ success: true, data: tickets });
+
+        if (!competition) {
+            competition = await WinningCombination.findOne({
+                where: { status: 'ended' },
+                order: [['createdAt', 'DESC']]
+            });
+        }
+
+        if (!competition) {
+            return res.status(404).json({ success: false, message: 'No competition found' });
+        }
+
+        const tickets = await Ticket.findAll({
+            where: { winningCombinationId: competition.id },
+            order: [['createdAt', 'DESC']]
+        });
+
+        return res.status(200).json({ success: true, data: tickets });
     } catch (err) {
         console.error('❌ Error fetching tickets:', err);
-        next(err);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+// Get Ticket by ID
+export const getTicketById = async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const ticket = await Ticket.findByPk(ticketId);
+
+        if (!ticket) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+
+        return res.json({ success: true, data: ticket });
+    } catch (err) {
+        console.error('❌ Error fetching ticket:', err);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };

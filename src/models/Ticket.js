@@ -7,32 +7,34 @@ export default function TicketModel(sequelize, DataTypes) {
         phone: {
             type: DataTypes.STRING,
             allowNull: false,
-            unique: true,
-            is: {
-                args: /^\+?[1-9]\d{7,14}$/, // Allows +91..., 10-15 digits
-                msg: 'Phone must be a valid international number (E.164 format)',
+            // Removed unique constraint
+            validate: {
+                is: {
+                    args: /^\+?[1-9]\d{7,14}$/, // E.164 format
+                    msg: 'Phone must be a valid international number',
+                },
             },
         },
         email: {
             type: DataTypes.STRING,
             allowNull: false,
-            unique: true,
+            // Removed unique constraint
             validate: { isEmail: true },
         },
         instagram: {
             type: DataTypes.STRING,
             allowNull: false,
-            unique: true,
+            // Removed unique constraint
         },
         ticketID: {
             type: DataTypes.STRING,
             allowNull: false,
-            unique: true,
+            unique: true, // This should stay unique
         },
         numbers: {
             type: DataTypes.ARRAY(DataTypes.STRING),
             allowNull: false,
-            unique: true,
+            unique: true, // Keep this if each number combo must be unique
         },
         issueDate: {
             type: DataTypes.STRING,
@@ -45,11 +47,11 @@ export default function TicketModel(sequelize, DataTypes) {
         },
         isSuperTicket: {
             type: DataTypes.BOOLEAN,
-            defaultValue: false
+            defaultValue: false,
         },
         purchaseProof: {
             type: DataTypes.STRING,
-            allowNull: true
+            allowNull: true,
         },
         prizeType: {
             type: DataTypes.STRING,
@@ -60,9 +62,16 @@ export default function TicketModel(sequelize, DataTypes) {
         },
         followProof: {
             type: DataTypes.STRING,
-            allowNull: true
+            allowNull: true,
         },
-
+        winningCombinationId: {
+            type: DataTypes.INTEGER,
+            references: {
+                model: 'WinningCombinations',
+                key: 'id',
+            },
+            allowNull: true,
+        },
     }, {
         timestamps: true,
     });

@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { Op } from 'sequelize'; // ✅ Import Op for date comparisons
 
 import routes from './routes/index.js';
 import winningTickets from './routes/winningTickets.js';
@@ -12,7 +13,8 @@ import ticketRoutes from './routes/ticketRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 import winningComboRoutes from './routes/winningComboRoutes.js';
 
-import { sequelize } from './models/index.js'; // ⬅️ Sequelize setup
+import { sequelize, WinningCombination } from './models/index.js'; // ✅ Include model
+
 import './models/Admin.js';
 import './models/Ticket.js';
 import './models/Claim.js';
@@ -36,7 +38,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/admin', ticketRoutes);
 app.use('/api/winning-combo', winningComboRoutes);
 
-// File preview (images/videos/pdfs)
+// File preview route
 app.get('/uploads/:filename', (req, res) => {
   const { filename } = req.params;
   const filePath = path.join(__dirname, '../uploads', filename);
@@ -69,26 +71,37 @@ app.get('/', (req, res) => {
   res.send('Server is running ✅');
 });
 
-// PostgreSQL (Sequelize) connection and sync
+// Sequelize connection
 sequelize.authenticate()
-  .then(() => {
+  .then(async () => {
     console.log('✅ PostgreSQL connected');
-    return sequelize.sync({ alter: true }); // Sync tables based on models
-  })
-  .then(() => {
+    await sequelize.sync({ alter: true });
+
+    // ✅ Auto-end expired competitions
+    await WinningCombination.update(
+      { status: 'ended' },
+      {
+        where: {
+          status: 'active',
+          endDate: {
+            [Op.lt]: new Date()
+          }
+        }
+      }
+    );
+    console.log('🔁 Expired competitions marked as ended.');
+
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-
     });
   })
   .catch((err) => {
-
     console.error('❌ DB connection failed:', err);
     process.exit(1);
   });
 
-// Error handler middleware (must be last)
+// Error handler
 app.use(errorHandler);
 
-export default app; // Export the app for testing or other purposes
+export default app;

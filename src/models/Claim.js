@@ -1,4 +1,3 @@
-// ✅ 1. UPDATED Sequelize Claim Model (with file support)
 export default function ClaimModel(sequelize, DataTypes) {
     const Claim = sequelize.define('Claim', {
         ticketID: {
@@ -24,6 +23,14 @@ export default function ClaimModel(sequelize, DataTypes) {
         },
         proofImage: {
             type: DataTypes.STRING,
+        },
+        winningCombinationId: {
+            type: DataTypes.INTEGER,
+            references: {
+                model: 'WinningCombinations',
+                key: 'id',
+            },
+            allowNull: true,
         },
     }, {
         timestamps: true,
