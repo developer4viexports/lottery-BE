@@ -57,7 +57,7 @@ export default function TicketModel(sequelize, DataTypes) {
             type: DataTypes.STRING,
             allowNull: true,
             validate: {
-                isIn: [['Grand', 'Silver', 'Bronze', 'Consolation']],
+                isIn: [['Grand', 'Silver', 'Bronze', 'Consolation', 'N/A']], // Add 'N/A' here
             },
         },
         followProof: {

@@ -20,6 +20,7 @@ import ClaimModel from './Claim.js';
 import TicketModel from './Ticket.js';
 import WinningTicketModel from './WinningTicket.js';
 import WinningCombinationModel from './WinningCombination.js';
+import GeneratedTicketModel from './GeneratedTicket.js';  // New import for GeneratedTicket
 
 // Initialize models
 const Admin = AdminModel(sequelize, DataTypes);
@@ -27,6 +28,7 @@ const Claim = ClaimModel(sequelize, DataTypes);
 const Ticket = TicketModel(sequelize, DataTypes);
 const WinningTicket = WinningTicketModel(sequelize, DataTypes);
 const WinningCombination = WinningCombinationModel(sequelize, DataTypes);
+const GeneratedTicket = GeneratedTicketModel(sequelize, DataTypes);  // New model initialization
 
 // ✅ Setup Associations
 
@@ -50,7 +52,17 @@ Claim.belongsTo(WinningCombination, {
     foreignKey: 'winningCombinationId',
 });
 
-// Export all
+// One WinningCombination has many GeneratedTickets (new association)
+WinningCombination.hasMany(GeneratedTicket, {
+    foreignKey: 'winningCombinationId',  // Foreign key in GeneratedTicket model
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+});
+GeneratedTicket.belongsTo(WinningCombination, {
+    foreignKey: 'winningCombinationId',  // Foreign key in GeneratedTicket model
+});
+
+// Export all models
 export {
     sequelize,
     Admin,
@@ -58,4 +70,5 @@ export {
     Ticket,
     WinningTicket,
     WinningCombination,
+    GeneratedTicket,  // Added export for GeneratedTicket
 };

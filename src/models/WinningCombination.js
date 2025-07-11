@@ -1,8 +1,13 @@
 export default function WinningCombinationModel(sequelize, DataTypes) {
     const WinningCombination = sequelize.define('WinningCombination', {
         numbers: {
-            type: DataTypes.ARRAY(DataTypes.STRING), // ['12', '34', ...]
+            type: DataTypes.ARRAY(DataTypes.STRING),
             allowNull: false,
+        },
+        totalParticipants: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
         },
         grandQuota: { type: DataTypes.INTEGER, allowNull: false },
         silverQuota: { type: DataTypes.INTEGER, allowNull: false },
@@ -30,7 +35,6 @@ export default function WinningCombinationModel(sequelize, DataTypes) {
                 isIn: [['active', 'ended']]
             }
         }
-
     }, {
         timestamps: true,
         tableName: 'WinningCombinations'

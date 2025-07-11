@@ -12,6 +12,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 import winningComboRoutes from './routes/winningComboRoutes.js';
+import generatedTicketRoutes from './routes/generatedTicketRoutes.js'; 
 
 import { sequelize, WinningCombination } from './models/index.js'; // ✅ Include model
 
@@ -37,6 +38,7 @@ app.use('/api/winners', winningTickets);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', ticketRoutes);
 app.use('/api/winning-combo', winningComboRoutes);
+app.use('/api', generatedTicketRoutes);
 
 // File preview route
 app.get('/uploads/:filename', (req, res) => {

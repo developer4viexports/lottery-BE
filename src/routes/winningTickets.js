@@ -1,6 +1,6 @@
 // routes/winningTickets.js
 import express from 'express';
-import { getWinners, addWinner, updateWinner, deleteWinner } from '../controllers/winningTicketsController.js';
+import { getWinners, addWinner, updateWinner, deleteWinner } from '../controllers/declareWinners.js';
 
 const router = express.Router();
 

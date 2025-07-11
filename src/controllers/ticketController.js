@@ -1,33 +1,19 @@
-import { Ticket, WinningCombination } from '../models/index.js';
-import { Op } from 'sequelize';
+import { Ticket, GeneratedTicket, WinningCombination } from '../models/index.js';
+import { Op, Sequelize } from 'sequelize';  // Import Sequelize
 
-// Helper: Generate 7 unique 2-digit numbers (as strings)
-function generateTicketNumbers() {
-    const nums = new Set();
-    while (nums.size < 7) {
-        const n = Math.floor(Math.random() * 100);
-        nums.add(n.toString().padStart(2, '0'));
-    }
-    return [...nums];
-}
-
-// Helper: Generate unique ticketID
+// Generate unique ticketID
 function generateTicketID() {
     const random = Math.floor(100000 + Math.random() * 900000);
     return `SLH-2025-${random}`;
 }
 
-// Helper: Count how many numbers match between two sets
-function countMatches(arr1, arr2) {
-    return arr1.filter(num => arr2.includes(num)).length;
-}
-
+// Create Ticket
 // Create Ticket
 export const createTicket = async (req, res) => {
     try {
         const {
             name, phone, email, instagram,
-            issueDate, expiryDate, isSuperTicket
+            isSuperTicket
         } = req.body;
 
         const proofImage = req.files?.file?.[0]
@@ -37,85 +23,102 @@ export const createTicket = async (req, res) => {
         const followProof = req.files?.followProof?.[0]
             ? `/uploads/${req.files.followProof[0].filename}` : '';
 
-        // Check for duplicate phone/email/instagram
-        const existingTicket = await Ticket.findOne({
-            where: {
-                [Op.or]: [{ phone }, { email }, { instagram }]
-            }
+        // Step 1: Get active or latest competition
+        let winningCombo = await WinningCombination.findOne({
+            where: { status: 'active' },
+            order: [['createdAt', 'DESC']]
         });
 
-        if (existingTicket) {
-            const conflictingFields = ['phone', 'email', 'instagram'];
-            const matchedField = conflictingFields.find(f => req.body[f] === existingTicket[f]);
-            return res.status(409).json({
-                message: 'Duplicate entry found',
-                field: matchedField || 'unknown'
+        if (!winningCombo) {
+            winningCombo = await WinningCombination.findOne({
+                where: { status: 'ended' },
+                order: [['createdAt', 'DESC']]
             });
         }
 
-        // Generate a unique ticketID
-        let ticketID, ticketIDExists;
-        do {
-            ticketID = generateTicketID();
-            ticketIDExists = await Ticket.findOne({ where: { ticketID } });
-        } while (ticketIDExists);
-
-        // Get active competition or fallback to latest ended one
-        let winningCombo = await WinningCombination.findOne({ where: { status: 'active' }, order: [['createdAt', 'DESC']] });
         if (!winningCombo) {
-            winningCombo = await WinningCombination.findOne({ where: { status: 'ended' }, order: [['createdAt', 'DESC']] });
+            return res.status(400).json({ message: 'No active or recent competition found.' });
         }
 
-        let numbers, prizeType = null;
-        const winningCombinationId = winningCombo?.id || null;
+        const winningCombinationId = winningCombo.id;
 
-        if (winningCombo) {
-            let isValid = false;
-            while (!isValid) {
-                numbers = generateTicketNumbers();
-                const matchCount = countMatches(numbers, winningCombo.numbers);
+        // Set the issueDate to today's date
+        const issueDate = new Date().toISOString().split('T')[0];  // Get today's date in YYYY-MM-DD format
 
-                if (matchCount === 7 && winningCombo.grandWinners < winningCombo.grandQuota) {
-                    prizeType = 'Grand';
-                    winningCombo.grandWinners += 1;
-                    isValid = true;
-                } else if (matchCount === 6 && winningCombo.silverWinners < winningCombo.silverQuota) {
-                    prizeType = 'Silver';
-                    winningCombo.silverWinners += 1;
-                    isValid = true;
-                } else if (matchCount === 5 && winningCombo.bronzeWinners < winningCombo.bronzeQuota) {
-                    prizeType = 'Bronze';
-                    winningCombo.bronzeWinners += 1;
-                    isValid = true;
-                } else if (matchCount === 4 && winningCombo.consolationWinners < winningCombo.consolationQuota) {
-                    prizeType = 'Consolation';
-                    winningCombo.consolationWinners += 1;
-                    isValid = true;
-                } else if (matchCount < 4) {
-                    isValid = true;
+        // Assuming winningCombo.endDate is a string in 'YYYY-MM-DD' format
+        const expiryDate = new Date(winningCombo.endDate);  // Convert to Date object
+
+        // Add 10 days
+        expiryDate.setDate(expiryDate.getDate() + 20);
+
+        // Format back to 'YYYY-MM-DD' format (Correctly formatted date)
+        const formattedExpiryDate = expiryDate.toISOString().split('T')[0];  // This ensures it's in YYYY-MM-DD format
+
+        // Step 2: Safe duplicate check — only for provided fields
+        const orConditions = [];
+        if (phone?.trim()) orConditions.push({ phone });
+        if (email?.trim()) orConditions.push({ email });
+        if (instagram?.trim()) orConditions.push({ instagram });
+
+        if (orConditions.length > 0) {
+            const duplicate = await Ticket.findOne({
+                where: {
+                    winningCombinationId,
+                    [Op.or]: orConditions
                 }
-            }
+            });
 
-            await winningCombo.save();
-        } else {
-            // No competition fallback
-            numbers = generateTicketNumbers();
+            if (duplicate) {
+                let field = '';
+                if (phone && duplicate.phone === phone) field = 'phone';
+                else if (email && duplicate.email === email) field = 'email';
+                else if (instagram && duplicate.instagram === instagram) field = 'instagram';
+
+                return res.status(409).json({
+                    message: `Duplicate ${field} already used in this competition.`,
+                    field
+                });
+            }
         }
 
+        // Step 3: Generate unique ticketID
+        let ticketID, exists = true;
+        while (exists) {
+            ticketID = generateTicketID();
+            exists = await Ticket.findOne({ where: { ticketID } });
+        }
+
+        // Step 4: Get a random ticket from GeneratedTicket that is not assigned
+        const randomTicket = await GeneratedTicket.findOne({
+            where: {
+                isAssigned: false,
+                winningCombinationId // Filter by the current winning combination
+            },
+            order: Sequelize.fn('random') // Corrected to use Sequelize.fn('random')
+        });
+
+        if (!randomTicket) {
+            return res.status(400).json({ message: 'No available ticket for this competition.' });
+        }
+
+        // Step 5: Assign the ticket to the user and mark it as assigned
+        await randomTicket.update({ isAssigned: true }); // Mark as assigned
+
+        // Step 6: Create the user ticket with the assigned number and prize type
         const newTicket = await Ticket.create({
             name,
             phone,
             email,
             instagram,
             ticketID,
-            numbers,
-            issueDate,
-            expiryDate,
+            numbers: randomTicket.numbers, // Use the numbers from the random ticket
+            issueDate,  // Set issueDate to today's date
+            expiryDate: formattedExpiryDate, // Updated expiry date, 10 days after the original endDate
             proofImage,
             purchaseProof,
             followProof,
             isSuperTicket: isSuperTicket === '1' || isSuperTicket === true || isSuperTicket === 'true',
-            prizeType,
+            prizeType: randomTicket.prizeType, // Use the prizeType from the random ticket
             winningCombinationId
         });
 
@@ -127,7 +130,8 @@ export const createTicket = async (req, res) => {
     }
 };
 
-// Get All Tickets (only from active or latest ended competition)
+
+// Get all tickets from current competition
 export const getAllTickets = async (req, res) => {
     try {
         let competition = await WinningCombination.findOne({
@@ -152,13 +156,14 @@ export const getAllTickets = async (req, res) => {
         });
 
         return res.status(200).json({ success: true, data: tickets });
+
     } catch (err) {
         console.error('❌ Error fetching tickets:', err);
         return res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };
 
-// Get Ticket by ID
+// Get single ticket by ID
 export const getTicketById = async (req, res) => {
     try {
         const ticketId = req.params.id;
@@ -169,6 +174,7 @@ export const getTicketById = async (req, res) => {
         }
 
         return res.json({ success: true, data: ticket });
+
     } catch (err) {
         console.error('❌ Error fetching ticket:', err);
         return res.status(500).json({ success: false, message: 'Internal server error' });
