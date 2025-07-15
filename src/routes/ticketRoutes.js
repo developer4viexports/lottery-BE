@@ -23,8 +23,8 @@ router.post('/claims', upload.fields([
     { name: 'proofImage', maxCount: 1 }
 ]), submitClaim);
 
-// User submits claim form
-router.post('/claims', submitClaim);
+// // User submits claim form
+// router.post('/claims', submitClaim);
 
 /* ─────────────── ADMIN ROUTES (Protected) ─────────────── */
 
