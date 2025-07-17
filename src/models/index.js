@@ -21,6 +21,7 @@ import TicketModel from './Ticket.js';
 import WinningTicketModel from './WinningTicket.js';
 import WinningCombinationModel from './WinningCombination.js';
 import GeneratedTicketModel from './GeneratedTicket.js';  // New import for GeneratedTicket
+import PrizeTierModel from './PrizeTier.js';
 
 // Initialize models
 const Admin = AdminModel(sequelize, DataTypes);
@@ -29,6 +30,7 @@ const Ticket = TicketModel(sequelize, DataTypes);
 const WinningTicket = WinningTicketModel(sequelize, DataTypes);
 const WinningCombination = WinningCombinationModel(sequelize, DataTypes);
 const GeneratedTicket = GeneratedTicketModel(sequelize, DataTypes);  // New model initialization
+const PrizeTier = PrizeTierModel(sequelize, DataTypes);
 
 // ✅ Setup Associations
 
@@ -71,4 +73,5 @@ export {
     WinningTicket,
     WinningCombination,
     GeneratedTicket,  // Added export for GeneratedTicket
+    PrizeTier,
 };
