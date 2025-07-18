@@ -1,7 +1,7 @@
 import express from 'express';
 import {
     getAllPrizeTiers,
-    createPrizeTier,
+    createOrUpdatePrizeTier,
     updatePrizeTier,
     deletePrizeTier
 } from '../controllers/prizeTierController.js';
@@ -9,7 +9,7 @@ import {
 const router = express.Router();
 
 router.get('/', getAllPrizeTiers);
-router.post('/', createPrizeTier);
+router.post('/', createOrUpdatePrizeTier);
 router.put('/:id', updatePrizeTier);
 router.delete('/:id', deletePrizeTier);
 
