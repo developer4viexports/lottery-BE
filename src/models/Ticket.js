@@ -72,6 +72,11 @@ export default function TicketModel(sequelize, DataTypes) {
             },
             allowNull: true,
         },
+        ticketImage: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+
     }, {
         timestamps: true,
     });

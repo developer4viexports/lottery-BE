@@ -1,5 +1,5 @@
 import express from 'express';
-import { createTicket, getAllTickets } from '../controllers/ticketController.js';
+import { createTicket, getAllTickets, uploadTicketImage, sendTicketEmail } from '../controllers/ticketController.js';
 import { submitClaim, getClaims } from '../controllers/claimController.js';
 import upload from '../middleware/upload.js';
 import adminAuth from '../middleware/adminAuth.js';
@@ -15,9 +15,9 @@ router.post('/tickets', upload.fields([
     { name: 'followProof', maxCount: 1 } // ✅ NEW 
 ]),
     createTicket
-);
+); 
 
-// ✅ User submits claim form with files
+// ✅ User submits claim form with files 
 router.post('/claims', upload.fields([
     { name: 'ticketImage', maxCount: 1 },
     { name: 'proofImage', maxCount: 1 }
@@ -33,5 +33,9 @@ router.get('/tickets', adminAuth, getAllTickets);
 
 // Admin fetches all claims
 router.get('/claims', adminAuth, getClaims);
+
+router.post('/upload-ticket-image', upload.single('image'), uploadTicketImage);
+
+router.post('/send-email/:id', sendTicketEmail);
 
 export default router;

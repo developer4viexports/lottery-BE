@@ -1,5 +1,21 @@
 import { Op, Sequelize } from 'sequelize';
 import { Ticket, GeneratedTicket, WinningCombination } from '../models/index.js';
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+dotenv.config();
+
+//send email setings
+const transporter = nodemailer.createTransport({
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+    },
+});
+
+
 
 // Helper function to generate unique ticketID
 function generateTicketID() {
@@ -143,6 +159,7 @@ export const createTicket = async (req, res) => {
             winningCombinationId,
         });
 
+
         // Check if all tickets have been used and regenerate if needed
         const totalTickets = await GeneratedTicket.count({
             where: { winningCombinationId, isAssigned: true },
@@ -255,5 +272,78 @@ export const getTicketById = async (req, res) => {
     } catch (err) {
         console.error('❌ Error fetching ticket:', err);
         return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+export const uploadTicketImage = async (req, res) => {
+    try {
+        const ticketId = req.body.ticketId;
+        const file = req.file;
+
+        if (!ticketId || !file) {
+            return res.status(400).json({ success: false, message: 'Ticket ID or image missing' });
+        }
+
+        // Save to DB
+        const ticket = await Ticket.findByPk(ticketId);
+        if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
+
+        ticket.ticketImage = `/uploads/${file.filename}`;
+
+        await ticket.save();
+
+        return res.status(200).json({ success: true, message: 'Ticket image uploaded', path: ticket.ticketImage });
+    } catch (err) {
+        console.error('❌ Upload failed:', err);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+export const sendTicketEmail = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const ticket = await Ticket.findByPk(id);
+
+        if (!ticket) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+
+        if (!ticket.email || !ticket.ticketImage) {
+            return res.status(400).json({ success: false, message: 'Missing email or ticket image' });
+        }
+
+        const imagePath = `.${ticket.ticketImage}`;
+        const fs = await import('fs/promises');
+
+        try {
+            await fs.access(imagePath); // Check if file exists
+        } catch {
+            return res.status(404).json({ success: false, message: 'Ticket image not found on server' });
+        }
+
+        await transporter.sendMail({
+            from: "booking@birc.in",
+            to: ticket.email,
+            subject: "🎫 Your Shrilalmahal Lucky Ticket",
+            html: `
+                <p>Hi ${ticket.name},</p>
+                <p>Thanks for participating in the Lucky Draw!</p>
+                <p>Your ticket ID: <strong>${ticket.ticketID}</strong></p>
+                <p>See your attached ticket image below. Best of luck! 🍀</p>
+            `,
+            attachments: [
+                {
+                    filename: `${ticket.ticketID}.png`,
+                    path: imagePath,
+                    contentType: 'image/png',
+                }
+            ]
+        });
+
+        return res.status(200).json({ success: true, message: 'Email sent successfully' });
+    } catch (err) {
+        console.error('❌ Failed to send ticket email:', err);
+        return res.status(500).json({ success: false, message: 'Failed to send ticket email' });
     }
 };

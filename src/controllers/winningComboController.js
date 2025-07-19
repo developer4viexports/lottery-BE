@@ -63,6 +63,28 @@ export const createOrUpdateWinningCombination = async (req, res) => {
             return res.status(400).json({ message: 'Invalid totalParticipants' });
         }
 
+        // 🔍 Check if a competition already exists
+        const existingCombo = await WinningCombination.findOne({
+            where: { status: 'active' },
+            order: [['createdAt', 'DESC']],
+            transaction: t
+        });
+
+        if (existingCombo) {
+            // ✅ Only update startDate and endDate
+            existingCombo.startDate = startDate;
+            existingCombo.endDate = endDate;
+            await existingCombo.save({ transaction: t });
+
+            await t.commit();
+            return res.status(200).json({
+                success: true,
+                message: 'Competition dates updated successfully.',
+                data: existingCombo
+            });
+        }
+        
+
         // Create a new competition (initialize winner counts with quotas)
         const newCombo = await WinningCombination.create({
             numbers,
@@ -367,7 +389,7 @@ export const getCompetitionById = async (req, res) => {
             where: { winningCombinationId: numericId },
             order: [['createdAt', 'DESC']]
         });
-        
+
         res.status(200).json({
             success: true,
             data: {
