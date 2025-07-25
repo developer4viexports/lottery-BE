@@ -62,21 +62,21 @@ export const createTicket = async (req, res) => {
         const purchaseProof = req.files?.purchaseProof?.[0] ? `/uploads/${req.files.purchaseProof[0].filename}` : '';
         const followProof = req.files?.followProof?.[0] ? `/uploads/${req.files.followProof[0].filename}` : '';
 
-        // Step 1: Get active competition or latest ended competition
-        let winningCombo = await WinningCombination.findOne({
-            where: { status: 'active' },
+        // ✅ Step 1: Always get the latest competition (active or ended)
+        const winningCombo = await WinningCombination.findOne({
             order: [['createdAt', 'DESC']],
         });
 
         if (!winningCombo) {
-            winningCombo = await WinningCombination.findOne({
-                where: { status: 'ended' },
-                order: [['createdAt', 'DESC']],
-            });
+            return res.status(400).json({ success: false, message: 'No competition found.' });
         }
 
-        if (!winningCombo) {
-            return res.status(400).json({ message: 'No active or recent competition found.' });
+        // ✅ Step 2: If status is ended, return message and stop creation
+        if (winningCombo.status === 'ended') {
+            return res.status(403).json({
+                success: false,
+                message: 'Competition has ended. Ticket creation is closed.',
+            });
         }
 
         const winningCombinationId = winningCombo.id;
