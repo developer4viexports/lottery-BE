@@ -1,6 +1,6 @@
 import express from 'express';
 import { createTicket, getAllTickets, uploadTicketImage, sendTicketEmail } from '../controllers/ticketController.js';
-import { submitClaim, getClaims } from '../controllers/claimController.js';
+import { submitActivate, getActivates } from '../controllers/activateController.js';
 import upload from '../middleware/upload.js';
 import adminAuth from '../middleware/adminAuth.js';
 
@@ -15,24 +15,24 @@ router.post('/tickets', upload.fields([
     { name: 'followProof', maxCount: 1 } // ✅ NEW 
 ]),
     createTicket
-); 
+);
 
-// ✅ User submits claim form with files 
-router.post('/claims', upload.fields([
+// ✅ User submits Activate form with files 
+router.post('/activate', upload.fields([
     { name: 'ticketImage', maxCount: 1 },
     { name: 'proofImage', maxCount: 1 }
-]), submitClaim);
+]), submitActivate);
 
-// // User submits claim form
-// router.post('/claims', submitClaim);
+// // User submits Activate form
+// router.post('/activate', submitActivate);
 
 /* ─────────────── ADMIN ROUTES (Protected) ─────────────── */
 
 // Admin fetches all tickets
 router.get('/tickets', adminAuth, getAllTickets);
 
-// Admin fetches all claims
-router.get('/claims', adminAuth, getClaims);
+// Admin fetches all Activate
+router.get('/activate', adminAuth, getActivates);
 
 router.post('/upload-ticket-image', upload.single('image'), uploadTicketImage);
 

@@ -16,24 +16,25 @@ const sequelize = new Sequelize(
 
 // Import model factory functions
 import AdminModel from './Admin.js';
-import ClaimModel from './Claim.js';
+import ActivateModel from './Activate.js';
 import TicketModel from './Ticket.js';
 import WinningTicketModel from './WinningTicket.js';
 import WinningCombinationModel from './WinningCombination.js';
 import GeneratedTicketModel from './GeneratedTicket.js';  // New import for GeneratedTicket
 import PrizeTierModel from './PrizeTier.js';
 import ContactMessageModel from './ContactMessage.js'; // Import ContactMessage model
-
+import ClaimModel from './Claim.js'; // ✅ NEW: Claim model
 
 // Initialize models
 const Admin = AdminModel(sequelize, DataTypes);
-const Claim = ClaimModel(sequelize, DataTypes);
+const Activate = ActivateModel(sequelize, DataTypes);
 const Ticket = TicketModel(sequelize, DataTypes);
 const WinningTicket = WinningTicketModel(sequelize, DataTypes);
 const WinningCombination = WinningCombinationModel(sequelize, DataTypes);
 const GeneratedTicket = GeneratedTicketModel(sequelize, DataTypes);  // New model initialization
 const PrizeTier = PrizeTierModel(sequelize, DataTypes);
 const ContactMessage = ContactMessageModel(sequelize, DataTypes); // Initialize ContactMessage model
+const Claim = ClaimModel(sequelize, DataTypes); // ✅ Initialize Claim
 
 // ✅ Setup Associations
 
@@ -47,13 +48,13 @@ Ticket.belongsTo(WinningCombination, {
     foreignKey: 'winningCombinationId',
 });
 
-// One WinningCombination has many Claims
-WinningCombination.hasMany(Claim, {
+// One WinningCombination has many Activates
+WinningCombination.hasMany(Activate, {
     foreignKey: 'winningCombinationId',
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
 });
-Claim.belongsTo(WinningCombination, {
+Activate.belongsTo(WinningCombination, {
     foreignKey: 'winningCombinationId',
 });
 
@@ -67,15 +68,26 @@ GeneratedTicket.belongsTo(WinningCombination, {
     foreignKey: 'winningCombinationId',  // Foreign key in GeneratedTicket model
 });
 
+// ✅ WinningCombination → Claims
+WinningCombination.hasMany(Claim, {
+    foreignKey: 'winningCombinationId',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+});
+Claim.belongsTo(WinningCombination, {
+    foreignKey: 'winningCombinationId',
+});
+
 // Export all models
 export {
     sequelize,
     Admin,
-    Claim,
+    Activate,
     Ticket,
     WinningTicket,
     WinningCombination,
     GeneratedTicket,  // Added export for GeneratedTicket
     PrizeTier,
     ContactMessage,
+    Claim, // ✅ Export Claim
 };

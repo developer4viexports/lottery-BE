@@ -1,5 +1,5 @@
 import { Op, Sequelize } from 'sequelize';
-import { sequelize, WinningCombination, GeneratedTicket, Claim, Ticket } from '../models/index.js';
+import { sequelize, WinningCombination, GeneratedTicket, Activate, Ticket, Claim } from '../models/index.js';
 
 // Helper function to generate unique tickets with a given count of admin numbers.
 function generateUniqueTicketNumbers(adminNumbers, digitsRequired, totalTickets) {
@@ -83,7 +83,7 @@ export const createOrUpdateWinningCombination = async (req, res) => {
                 data: existingCombo
             });
         }
-        
+
 
         // Create a new competition (initialize winner counts with quotas)
         const newCombo = await WinningCombination.create({
@@ -385,6 +385,11 @@ export const getCompetitionById = async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
+        const Activates = await Activate.findAll({
+            where: { winningCombinationId: numericId },
+            order: [['createdAt', 'DESC']]
+        });
+
         const claims = await Claim.findAll({
             where: { winningCombinationId: numericId },
             order: [['createdAt', 'DESC']]
@@ -395,6 +400,7 @@ export const getCompetitionById = async (req, res) => {
             data: {
                 competition,
                 tickets,
+                Activates,
                 claims
             }
         });

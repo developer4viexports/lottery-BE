@@ -19,7 +19,7 @@ const createAdmin = async () => {
         await sequelize.sync();
         console.log('✅ Models synced');
 
-        const email = 'admin@viexport.com';
+        const email = 'admin@viexports.com';
         const password = 'Admin@123';
 
         const existing = await Admin.findOne({ where: { email } });

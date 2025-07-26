@@ -1,39 +1,36 @@
 export default function ClaimModel(sequelize, DataTypes) {
     const Claim = sequelize.define('Claim', {
-        ticketID: {
-            type: DataTypes.STRING,
-        },
         name: {
             type: DataTypes.STRING,
-        },
-        email: {
-            type: DataTypes.STRING,
+            allowNull: false,
         },
         phone: {
             type: DataTypes.STRING,
+            allowNull: false,
+        },
+        email: {
+            type: DataTypes.STRING,
+            allowNull: false,
         },
         instagram: {
             type: DataTypes.STRING,
+            allowNull: false,
         },
-        countryCode: {
+        ticketID: {
             type: DataTypes.STRING,
+            allowNull: false,
         },
-        ticketImage: {
-            type: DataTypes.STRING,
-        },
-        proofImage: {
-            type: DataTypes.STRING,
+        numbers: {
+            type: DataTypes.ARRAY(DataTypes.STRING),
+            allowNull: true, // ✅ allow null initially
         },
         winningCombinationId: {
             type: DataTypes.INTEGER,
-            references: {
-                model: 'WinningCombinations',
-                key: 'id',
-            },
-            allowNull: true,
-        },
+            allowNull: false,
+        }
     }, {
-        timestamps: true,
+        tableName: 'Claims',
+        timestamps: true
     });
 
     return Claim;

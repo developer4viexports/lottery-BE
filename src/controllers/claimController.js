@@ -1,121 +1,68 @@
 import { Claim, Ticket, WinningCombination } from '../models/index.js';
 import { Op } from 'sequelize';
 
-// ========================
-// Submit Claim
-// ========================
 export const submitClaim = async (req, res) => {
     try {
-        const {
-            ticketID,
-            name,
-            email,
-            phone,
-            instagram,
-            countryCode
-        } = req.body || {};
+        const { ticketID, name, email, phone, instagram } = req.body;
 
         if (!ticketID || !name || !email || !phone || !instagram) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
 
-        const ticketImage = req.files?.ticketImage?.[0]?.filename
-            ? `/uploads/${req.files.ticketImage[0].filename}` : '';
-
-        const proofImage = req.files?.proofImage?.[0]?.filename
-            ? `/uploads/${req.files.proofImage[0].filename}` : '';
-
-        // Determine winningCombinationId
-        let winningCombinationId = null;
         const ticket = await Ticket.findOne({ where: { ticketID } });
 
-        if (ticket?.winningCombinationId) {
-            winningCombinationId = ticket.winningCombinationId;
-        } else {
-            const activeOrLatestEnded = await WinningCombination.findOne({
-                where: { status: 'active' },
-                order: [['createdAt', 'DESC']]
-            }) || await WinningCombination.findOne({
-                where: { status: 'ended' },
-                order: [['createdAt', 'DESC']]
+        if (!ticket) {
+            return res.status(404).json({
+                success: false,
+                message: 'Invalid Ticket ID. No ticket found with this ID.',
+                field: 'ticketID'
             });
+        }
 
-            if (activeOrLatestEnded) {
-                winningCombinationId = activeOrLatestEnded.id;
+        const existingClaim = await Claim.findOne({
+            where: {
+                ticketID,
+                [Op.or]: [{ email }, { phone }, { instagram }]
             }
-        }
+        });
 
-        if (!winningCombinationId) {
-            return res.status(400).json({ success: false, message: 'Competition not found' });
-        }
+        // if (existingClaim) {
+        //     return res.status(409).json({
+        //         success: false,
+        //         message: 'You have already submitted a claim for this ticket.',
+        //         field: 'ticketID'
+        //     });
+        // }
 
-        // Check for duplicate claim with same phone/email/instagram in this competition
-        const orConditions = [];
-        if (phone) orConditions.push({ phone });
-        if (email) orConditions.push({ email });
-        if (instagram) orConditions.push({ instagram });
-
-        if (orConditions.length > 0) {
-            const duplicate = await Claim.findOne({
-                where: {
-                    winningCombinationId,
-                    [Op.or]: orConditions
-                }
-            });
-
-            if (duplicate) {
-                let field = '';
-                if (duplicate.phone === phone) field = 'phone';
-                else if (duplicate.email === email) field = 'email';
-                else if (duplicate.instagram === instagram) field = 'instagram';
-
-                return res.status(409).json({
-                    success: false,
-                    message: `Duplicate ${field} already used in this competition.`,
-                    field
-                });
-            }
-        }
-
-        // Create claim
-        const newClaim = await Claim.create({
+        const claim = await Claim.create({
             ticketID,
             name,
             email,
             phone,
             instagram,
-            countryCode,
-            ticketImage,
-            proofImage,
-            winningCombinationId
+            numbers: ticket.numbers,
+            winningCombinationId: ticket.winningCombinationId
         });
 
-        return res.status(201).json({
-            success: true,
-            message: 'Claim submitted successfully!',
-            data: newClaim
-        });
+        return res.status(201).json({ success: true, data: claim });
 
     } catch (err) {
-        console.error('❌ Submit claim error:', err);
-        return res.status(500).json({ success: false, message: 'Server error' });
+        console.error('❌ Claim submission failed:', err);
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 };
 
-// ========================
-// Get All Claims for Current Competition
-// ========================
-export const getClaims = async (req, res) => {
+export const getAllClaims = async (req, res) => {
     try {
         let competition = await WinningCombination.findOne({
             where: { status: 'active' },
-            order: [['createdAt', 'DESC']]
+            order: [['createdAt', 'DESC']],
         });
 
         if (!competition) {
             competition = await WinningCombination.findOne({
                 where: { status: 'ended' },
-                order: [['createdAt', 'DESC']]
+                order: [['createdAt', 'DESC']],
             });
         }
 
@@ -125,19 +72,12 @@ export const getClaims = async (req, res) => {
 
         const claims = await Claim.findAll({
             where: { winningCombinationId: competition.id },
-            order: [['createdAt', 'DESC']]
+            order: [['createdAt', 'DESC']],
         });
 
-        return res.status(200).json({
-            success: true,
-            data: claims
-        });
-
+        return res.status(200).json({ success: true, data: claims });
     } catch (err) {
         console.error('❌ Error fetching claims:', err);
-        return res.status(500).json({ success: false, message: 'Server error' });
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 };
-
-// ✅ Export both functions for use in routes
-// export { submitClaim, getClaims };

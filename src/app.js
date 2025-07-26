@@ -15,16 +15,19 @@ import winningComboRoutes from './routes/winningComboRoutes.js';
 import generatedTicketRoutes from './routes/generatedTicketRoutes.js';
 import prizeTierRoutes from './routes/prizeTierRoutes.js'; // ✅ Import prize tier routes
 import contactRoutes from './routes/contactRoutes.js';
+import claimRoutes from './routes/claimRoutes.js';
 import { sequelize, WinningCombination } from './models/index.js'; // ✅ Include model
 
 import './models/Admin.js';
 import './models/Ticket.js';
-import './models/Claim.js';
+import './models/Activate.js';
 import './models/WinningTicket.js';
 import './models/PrizeTier.js';
 import './models/ContactMessage.js'
 import './models/GeneratedTicket.js'; // ✅ Import GeneratedTicket model
 import './models/WinningCombination.js'; // ✅ Import WinningCombination model
+import './models/Claim.js'; // ✅ Import Claim model  
+
 dotenv.config();
 const app = express();
 
@@ -45,6 +48,7 @@ app.use('/api/winning-combo', winningComboRoutes);
 app.use('/api', generatedTicketRoutes);
 app.use('/api/prize-tiers', prizeTierRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/tickets', claimRoutes); // or wherever you mount claim endpoints
 
 // File preview route
 app.get('/uploads/:filename', (req, res) => {
