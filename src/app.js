@@ -16,6 +16,7 @@ import generatedTicketRoutes from './routes/generatedTicketRoutes.js';
 import prizeTierRoutes from './routes/prizeTierRoutes.js'; // ✅ Import prize tier routes
 import contactRoutes from './routes/contactRoutes.js';
 import claimRoutes from './routes/claimRoutes.js';
+import urlRoutes from './routes/urlRoutes.js'; // ✅ Add import
 import { sequelize, WinningCombination } from './models/index.js'; // ✅ Include model
 
 import './models/Admin.js';
@@ -49,7 +50,7 @@ app.use('/api', generatedTicketRoutes);
 app.use('/api/prize-tiers', prizeTierRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/tickets', claimRoutes); // or wherever you mount claim endpoints
-
+app.use('/api/url-date', urlRoutes); // ✅ Mount endpoint at /api/urls/collect-url
 // File preview route
 app.get('/uploads/:filename', (req, res) => {
   const { filename } = req.params;

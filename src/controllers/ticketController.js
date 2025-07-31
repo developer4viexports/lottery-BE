@@ -56,7 +56,7 @@ function generateUniqueTicketNumbers(adminNumbers, digitsRequired, totalTickets)
 // Create Ticket
 export const createTicket = async (req, res) => {
     try {
-        const { name, phone, email, instagram, isSuperTicket } = req.body;
+        const { name, phone, email, instagram, isSuperTicket, expiryDate } = req.body;
 
         const proofImage = req.files?.file?.[0] ? `/uploads/${req.files.file[0].filename}` : '';
         const purchaseProof = req.files?.purchaseProof?.[0] ? `/uploads/${req.files.purchaseProof[0].filename}` : '';
@@ -85,11 +85,9 @@ export const createTicket = async (req, res) => {
         const issueDate = new Date().toISOString().split('T')[0];  // Get today's date in YYYY-MM-DD format
 
         // Assuming winningCombo.endDate is a string in 'YYYY-MM-DD' format
-        const expiryDate = new Date(winningCombo.endDate);  // Convert to Date object
+        // const expiryDate2 = new Date(expiryDate);  // Convert to Date object
 
-        // Add 20 days to expiry
-        expiryDate.setDate(expiryDate.getDate() + 20);
-        const formattedExpiryDate = expiryDate.toISOString().split('T')[0];  // Ensure it's in YYYY-MM-DD format
+        const formattedExpiryDate = expiryDate;  // Ensure it's in YYYY-MM-DD format
 
         // Step 2: Safe duplicate check — only for provided fields (phone, email, instagram)
         const orConditions = [];

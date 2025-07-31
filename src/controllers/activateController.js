@@ -15,7 +15,7 @@ export const submitActivate = async (req, res) => {
             countryCode
         } = req.body || {};
 
-        if (!ticketID || !name || !email || !phone || !instagram) {
+        if (!ticketID || (!email && !phone)) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
 

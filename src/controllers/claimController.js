@@ -3,9 +3,9 @@ import { Op } from 'sequelize';
 
 export const submitClaim = async (req, res) => {
     try {
-        const { ticketID, name, email, phone, instagram } = req.body;
+        const { ticketID, name, email, phone, instagram, address } = req.body;
 
-        if (!ticketID || !name || !email || !phone || !instagram) {
+        if (!ticketID || !address || (!email && !phone)) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
 
@@ -19,13 +19,20 @@ export const submitClaim = async (req, res) => {
             });
         }
 
+        // ✅ Construct OR conditions only with defined fields
+        const orConditions = [];
+        if (email) orConditions.push({ email });
+        if (phone) orConditions.push({ phone });
+        if (instagram) orConditions.push({ instagram });
+
         const existingClaim = await Claim.findOne({
             where: {
                 ticketID,
-                [Op.or]: [{ email }, { phone }, { instagram }]
+                ...(orConditions.length ? { [Op.or]: orConditions } : {})
             }
         });
 
+        // Optional duplication check
         // if (existingClaim) {
         //     return res.status(409).json({
         //         success: false,
@@ -36,11 +43,12 @@ export const submitClaim = async (req, res) => {
 
         const claim = await Claim.create({
             ticketID,
-            name,
-            email,
-            phone,
-            instagram,
-            numbers: ticket.numbers,
+            name: name || null,
+            email: email || null,
+            phone: phone || null,
+            instagram: instagram || null,
+            address,
+            numbers: ticket.numbers || null,
             winningCombinationId: ticket.winningCombinationId
         });
 
@@ -51,6 +59,8 @@ export const submitClaim = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 };
+
+
 
 export const getAllClaims = async (req, res) => {
     try {
@@ -79,5 +89,41 @@ export const getAllClaims = async (req, res) => {
     } catch (err) {
         console.error('❌ Error fetching claims:', err);
         return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+};
+
+export const getTicketDetailsById = async (req, res) => {
+    try {
+        const { ticketID } = req.params;
+
+        if (!ticketID) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ticket ID is required.',
+            });
+        }
+
+        const ticket = await Ticket.findOne({
+            where: { ticketID },
+            attributes: ['name', 'instagram'], // Return only necessary fields
+        });
+
+        if (!ticket) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ticket not found.',
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: ticket,
+        });
+    } catch (error) {
+        console.error('❌ Error fetching ticket details:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error.',
+        });
     }
 };
