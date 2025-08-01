@@ -102,7 +102,7 @@ export const submitActivate = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: 'Activate submitted successfully!',
-            data: newActivate
+            // data: newActivate
         });
 
     } catch (err) {

@@ -170,7 +170,11 @@ export const createTicket = async (req, res) => {
             await regenerateTickets(winningCombo, totalGenerated);
         }
 
-        return res.status(201).json({ success: true, data: newTicket });
+        const ticketData = { ...newTicket.get() }; // convert Sequelize instance to plain object
+        delete ticketData.prizeType;               // safely remove prizeType only from the response
+
+        return res.status(201).json({ success: true, data: ticketData }); // send cleaned object
+
     } catch (error) {
         console.error('❌ Ticket creation failed:', error);
         return res.status(500).json({ message: 'Internal server error' });

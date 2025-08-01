@@ -52,7 +52,11 @@ export const submitClaim = async (req, res) => {
             winningCombinationId: ticket.winningCombinationId
         });
 
-        return res.status(201).json({ success: true, data: claim });
+        return res.status(201).json({ 
+            success: true, 
+            message: "Claim submitted successfully!", 
+            // data: claim 
+        });
 
     } catch (err) {
         console.error('❌ Claim submission failed:', err);
