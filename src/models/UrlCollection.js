@@ -7,9 +7,17 @@ export default function UrlCollectionModel(sequelize, DataTypes) {
                 isUrl: true,
             },
         },
-        collectedAt: {
+        startDate: {
             type: DataTypes.DATEONLY,
-            allowNull: false,
+            allowNull: true,
+        },
+        revealDate: {
+            type: DataTypes.DATEONLY,
+            allowNull: true,
+        },
+        endDate: {
+            type: DataTypes.DATEONLY,
+            allowNull: true,
         },
     }, {
         timestamps: true,

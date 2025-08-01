@@ -37,7 +37,13 @@ export default function WinningCombinationModel(sequelize, DataTypes) {
         }
     }, {
         timestamps: true,
-        tableName: 'WinningCombinations'
+        tableName: 'WinningCombinations',
+        indexes: [
+            { fields: ['status'] },         // For status-based filtering
+            { fields: ['createdAt'] },      // For sorting by latest
+            { fields: ['startDate'] },      // For finding competitions by date
+            { fields: ['endDate'] },        // Helpful if you filter competitions that ended
+        ]
     });
 
     return WinningCombination;

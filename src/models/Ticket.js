@@ -71,6 +71,7 @@ export default function TicketModel(sequelize, DataTypes) {
                 key: 'id',
             },
             allowNull: true,
+            index: true,
         },
         ticketImage: {
             type: DataTypes.STRING,
@@ -79,6 +80,15 @@ export default function TicketModel(sequelize, DataTypes) {
 
     }, {
         timestamps: true,
+        indexes: [
+            { fields: ['ticketID'] },
+            { fields: ['phone'] },
+            { fields: ['email'] },
+            { fields: ['instagram'] },
+            { fields: ['winningCombinationId'] },
+            { fields: ['prizeType'] }
+        ]
+
     });
 
     return Ticket;

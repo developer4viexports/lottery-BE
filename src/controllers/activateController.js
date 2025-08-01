@@ -48,7 +48,15 @@ export const submitActivate = async (req, res) => {
         if (!winningCombinationId) {
             return res.status(400).json({ success: false, message: 'Competition not found' });
         }
+        // const ticket = await Ticket.findOne({ where: { ticketID } });
 
+        if (!ticket) {
+            return res.status(404).json({
+                success: false,
+                message: 'Invalid Ticket ID. No ticket found with this ID.',
+                field: 'ticketID'
+            });
+        }
         // Check for duplicate activate with same phone/email/instagram in this competition
         const orConditions = [];
         if (phone) orConditions.push({ phone });
@@ -80,11 +88,12 @@ export const submitActivate = async (req, res) => {
         // Create Activate
         const newActivate = await Activate.create({
             ticketID,
-            name,
-            email,
-            phone,
-            instagram,
-            countryCode,
+            name: ticket.name || null,
+            email: email || null,
+            phone: phone || null,
+            instagram: ticket.instagram || null,
+            countryCode: countryCode || null,
+            numbers: ticket.numbers || null,
             ticketImage,
             proofImage,
             winningCombinationId

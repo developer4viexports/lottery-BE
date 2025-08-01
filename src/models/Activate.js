@@ -22,10 +22,14 @@ export default function ActivateModel(sequelize, DataTypes) {
         },
         countryCode: {
             type: DataTypes.STRING,
-            allowNull: true,    
+            allowNull: true,
         },
         ticketImage: {
             type: DataTypes.STRING,
+            allowNull: true,
+        },
+        numbers: {
+            type: DataTypes.ARRAY(DataTypes.STRING),
             allowNull: true,
         },
         proofImage: {
@@ -39,9 +43,19 @@ export default function ActivateModel(sequelize, DataTypes) {
                 key: 'id',
             },
             allowNull: true,
+            index: true,
         },
     }, {
         timestamps: true,
+        indexes: [
+            { fields: ['ticketID'] },
+            { fields: ['email'] },
+            { fields: ['phone'] },
+            { fields: ['instagram'] },
+            { fields: ['winningCombinationId'] }
+        ]
+
+
     });
 
     return Activate;

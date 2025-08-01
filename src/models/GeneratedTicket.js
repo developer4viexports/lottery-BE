@@ -19,7 +19,9 @@ export default function GeneratedTicketModel(sequelize, DataTypes) {
             references: {
                 model: 'WinningCombinations', // Ensure this matches the table name in your DB
                 key: 'id',
-            }
+            },
+            allowNull: true,
+            index: true,
         },
         isAssigned: {
             type: DataTypes.BOOLEAN,
@@ -27,7 +29,11 @@ export default function GeneratedTicketModel(sequelize, DataTypes) {
         }
     }, {
         timestamps: true,
-        tableName: 'GeneratedTickets'  // Ensure this matches the table name in your DB
+        tableName: 'GeneratedTickets',  // Ensure this matches the table name in your DB
+        indexes: [
+            { fields: ['isAssigned'] },              // ✅ speeds up lookup for unassigned tickets
+            { fields: ['winningCombinationId'] }     // ✅ speeds up foreign key joins
+        ]
     });
 
     return GeneratedTicket;

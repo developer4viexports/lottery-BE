@@ -34,7 +34,14 @@ export default function ClaimModel(sequelize, DataTypes) {
         }
     }, {
         tableName: 'Claims',
-        timestamps: true
+        timestamps: true,
+        indexes: [
+            { fields: ['email'] },
+            { fields: ['phone'] },
+            { fields: ['instagram'] },
+            { fields: ['winningCombinationId'] }
+        ]
+
     });
 
     return Claim;

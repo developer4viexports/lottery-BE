@@ -46,7 +46,7 @@ export const submitClaim = async (req, res) => {
             name: name || null,
             email: email || null,
             phone: phone || null,
-            instagram: instagram || null,
+            instagram: ticket.instagram || null,
             address,
             numbers: ticket.numbers || null,
             winningCombinationId: ticket.winningCombinationId
@@ -105,7 +105,7 @@ export const getTicketDetailsById = async (req, res) => {
 
         const ticket = await Ticket.findOne({
             where: { ticketID },
-            attributes: ['name', 'instagram'], // Return only necessary fields
+            attributes: ['name'], // Return only necessary fields
         });
 
         if (!ticket) {
