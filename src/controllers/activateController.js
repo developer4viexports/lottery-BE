@@ -1,5 +1,6 @@
 import { Activate, Ticket, WinningCombination } from '../models/index.js';
 import { Op } from 'sequelize';
+import { uploadFilesToFirebase } from '../utils/firebaseUpload.js  ';
 
 // ========================
 // Submit Activate
@@ -19,11 +20,11 @@ export const submitActivate = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
 
-        const ticketImage = req.files?.ticketImage?.[0]?.filename
-            ? `/uploads/${req.files.ticketImage[0].filename}` : '';
+        // const ticketImage = req.files?.ticketImage?.[0]?.filename
+        //     ? `/uploads/${req.files.ticketImage[0].filename}` : '';
 
-        const proofImage = req.files?.proofImage?.[0]?.filename
-            ? `/uploads/${req.files.proofImage[0].filename}` : '';
+        // const proofImage = req.files?.proofImage?.[0]?.filename
+        //     ? `/uploads/${req.files.proofImage[0].filename}` : '';
 
         // Determine winningCombinationId
         let winningCombinationId = null;
@@ -85,6 +86,15 @@ export const submitActivate = async (req, res) => {
             }
         }
 
+        // 4️⃣ Upload files to Firebase
+        let ticketImage = '';
+        let proofImage = '';
+        const uploadedFiles = await uploadFilesToFirebase(req.files);
+
+        if (uploadedFiles && uploadedFiles.length > 0) {
+            ticketImage = uploadedFiles[0]?.url || '';
+            proofImage = uploadedFiles[1]?.url || '';
+        }
         // Create Activate
         const newActivate = await Activate.create({
             ticketID,
@@ -102,7 +112,7 @@ export const submitActivate = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: 'Activate submitted successfully!',
-            // data: newActivate
+            data: newActivate
         });
 
     } catch (err) {

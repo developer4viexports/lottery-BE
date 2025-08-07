@@ -1,21 +1,6 @@
 // src/middleware/upload.js
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
-
-const uploadDir = 'uploads/';
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir);
-}
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`);
-    }
-});
 
 const fileFilter = (req, file, cb) => {
     const filetypes = /jpeg|jpg|png|gif|pdf|mp4|mov/;
@@ -30,10 +15,10 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-    storage,
+    storage: multer.memoryStorage(), // ⬅️ Storing in memory for Firebase direct upload
     fileFilter,
     limits: {
-        fileSize: 20 * 1024 * 1024 // 20MB limit
+        fileSize: 20 * 1024 * 1024 // 20MB limit ✅
     }
 });
 
