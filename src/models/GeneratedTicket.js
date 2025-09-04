@@ -31,8 +31,12 @@ export default function GeneratedTicketModel(sequelize, DataTypes) {
         timestamps: true,
         tableName: 'GeneratedTickets',  // Ensure this matches the table name in your DB
         indexes: [
-            { fields: ['isAssigned'] },              // ✅ speeds up lookup for unassigned tickets
-            { fields: ['winningCombinationId'] }     // ✅ speeds up foreign key joins
+            { fields: ['isAssigned'] },              
+            { fields: ['winningCombinationId'] },     
+            // Composite index for random ticket selection performance
+            { fields: ['winningCombinationId', 'isAssigned'] },
+            // Index for counting queries
+            { fields: ['winningCombinationId', 'isAssigned', 'createdAt'] }
         ]
     });
 

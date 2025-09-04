@@ -2,7 +2,7 @@ import { Sequelize, DataTypes } from 'sequelize';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Initialize Sequelize
+// Initialize Sequelize with performance optimizations
 const sequelize = new Sequelize(
     process.env.POSTGRES_DB,
     process.env.POSTGRES_USER,
@@ -11,6 +11,23 @@ const sequelize = new Sequelize(
         host: process.env.POSTGRES_HOST || 'localhost',
         dialect: 'postgres',
         logging: false,
+        // Connection pooling for better performance
+        pool: {
+            max: 20,          // Maximum connections in pool
+            min: 0,           // Minimum connections in pool
+            acquire: 30000,   // Max time (ms) to get connection before throwing error
+            idle: 10000,      // Max time (ms) a connection can be idle before being released
+        },
+        // Query timeout configuration
+        dialectOptions: {
+            statement_timeout: 10000, // 10 seconds query timeout
+            idle_in_transaction_session_timeout: 30000, // 30 seconds idle timeout
+        },
+        // Other performance optimizations
+        retry: {
+            max: 3,           // Retry failed connections 3 times
+        },
+        transactionType: 'IMMEDIATE',
     }
 );
 

@@ -86,7 +86,14 @@ export default function TicketModel(sequelize, DataTypes) {
             { fields: ['email'] },
             { fields: ['instagram'] },
             { fields: ['winningCombinationId'] },
-            { fields: ['prizeType'] }
+            { fields: ['prizeType'] },
+            // Composite indexes for duplicate checking performance
+            { fields: ['winningCombinationId', 'phone'] },
+            { fields: ['winningCombinationId', 'email'] },
+            { fields: ['winningCombinationId', 'instagram'] },
+            // Index for admin queries
+            { fields: ['winningCombinationId', 'createdAt'] },
+            { fields: ['createdAt'] }
         ]
 
     });

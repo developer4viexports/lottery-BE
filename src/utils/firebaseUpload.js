@@ -24,10 +24,22 @@ export const uploadToFirebase = async (file, key) => {
     // Pipe the buffer into the upload stream
     fileUpload.end(file.buffer);
 
-    // Wait for the upload to finish
+    // Wait for the upload to finish with timeout
     await new Promise((resolve, reject) => {
-        fileUpload.on("finish", resolve);
-        fileUpload.on("error", reject);
+        // Set timeout for uploads (30 seconds)
+        const timeout = setTimeout(() => {
+            reject(new Error(`Upload timeout for file: ${file.originalname}`));
+        }, 30000);
+
+        fileUpload.on("finish", () => {
+            clearTimeout(timeout);
+            resolve();
+        });
+        
+        fileUpload.on("error", (error) => {
+            clearTimeout(timeout);
+            reject(error);
+        });
     });
 
     // Generate the public URL after the file is uploaded
@@ -43,23 +55,25 @@ export const uploadToFirebase = async (file, key) => {
  * @returns {Promise<Array<{ key: string, url: string }>>}
  */
 export const uploadFilesToFirebase = async (files) => {
-    const uploads = [];
+    const uploadPromises = [];
 
     if (Array.isArray(files)) {
-        // Case: multer.any()
+        // Case: multer.any() - Upload all files in parallel
         for (const file of files) {
-            uploads.push(await uploadToFirebase(file, file.fieldname));
+            uploadPromises.push(uploadToFirebase(file, file.fieldname));
         }
     } else if (typeof files === "object" && files !== null) {
-        // Case: multer.fields()
+        // Case: multer.fields() - Upload all files in parallel
         for (const key in files) {
             const fileArray = Array.isArray(files[key]) ? files[key] : [files[key]];
             for (const file of fileArray) {
-                uploads.push(await uploadToFirebase(file, key));
+                uploadPromises.push(uploadToFirebase(file, key));
             }
         }
     }
 
+    // Wait for all uploads to complete in parallel
+    const uploads = await Promise.all(uploadPromises);
     return uploads;
 };
 

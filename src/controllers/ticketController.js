@@ -1,11 +1,55 @@
 import { Op, Sequelize } from 'sequelize';
-import { Ticket, GeneratedTicket, WinningCombination } from '../models/index.js';
+import { Ticket, GeneratedTicket, WinningCombination, sequelize } from '../models/index.js';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import https from 'https'; // ✅ ADD THIS LINE
 import { uploadFilesToFirebase } from '../utils/firebaseUpload.js';
 
 dotenv.config();
+
+// Background file processing function with timeout
+const processTicketFilesAsync = async (ticketId, files) => {
+    const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('File processing timeout')), 60000) // 1 minute timeout
+    );
+
+    try {
+        console.log(`🔄 Processing files in background for ticket ${ticketId}`);
+        
+        // Upload files to Firebase with timeout protection
+        const uploadedFiles = await Promise.race([
+            uploadFilesToFirebase(files),
+            timeout
+        ]);
+        
+        // Prepare update data
+        const updateData = {};
+        if (uploadedFiles && uploadedFiles.length > 0) {
+            // Map uploaded files to proper fields
+            uploadedFiles.forEach(file => {
+                if (file.key === 'purchaseProof') {
+                    updateData.purchaseProof = file.url;
+                } else if (file.key === 'followProof') {
+                    updateData.followProof = file.url;
+                } else if (file.key === 'file') {
+                    updateData.purchaseProof = file.url; // Default file field
+                }
+            });
+        }
+        
+        // Update ticket with file URLs
+        await Ticket.update(updateData, {
+            where: { id: ticketId }
+        });
+        
+        console.log(`✅ Files processed successfully for ticket ${ticketId}`);
+    } catch (error) {
+        console.error(`❌ Failed to process files for ticket ${ticketId}:`, error);
+        
+        // Optional: You could mark the ticket with failed upload status
+        // await Ticket.update({ uploadStatus: 'failed' }, { where: { id: ticketId } });
+    }
+};
 
 //send email setings
 const transporter = nodemailer.createTransport({
@@ -63,13 +107,11 @@ export const createTicket = async (req, res) => {
 
         // console.log('Received files:', req.files);
 
-        const proofImage = null
-        let purchaseProof, followProof;
-        const uploadedFiles = await uploadFilesToFirebase(req.files);
-        if (uploadedFiles && uploadedFiles.length > 0) {
-            purchaseProof = uploadedFiles[0].url || null;
-            followProof = uploadedFiles[1]?.url || null;
-        }
+        // Store files for background processing instead of blocking upload
+        const hasFiles = req.files && Object.keys(req.files).length > 0;
+        const proofImage = null;
+        let purchaseProof = null;
+        let followProof = null;
 
         // ✅ Step 1: Always get the latest competition (active or ended)
         const winningCombo = await WinningCombination.findOne({
@@ -132,23 +174,36 @@ export const createTicket = async (req, res) => {
             exists = await Ticket.findOne({ where: { ticketID } });
         }
 
-        // Step 4: Get a random ticket from GeneratedTicket that is not assigned
-        const randomTicket = await GeneratedTicket.findOne({
-            where: {
-                isAssigned: false,
-                winningCombinationId, // Filter by the current winning combination
-            },
-            order: Sequelize.fn('random'), // Corrected to use Sequelize.fn('random')
+        // Step 4: Get and assign a random ticket in a single atomic operation
+        const randomTicket = await sequelize.transaction(async (t) => {
+            // Use a more efficient random selection with row locking
+            const result = await sequelize.query(`
+                UPDATE "GeneratedTickets" 
+                SET "isAssigned" = true, "updatedAt" = NOW()
+                WHERE id = (
+                    SELECT id FROM "GeneratedTickets" 
+                    WHERE "isAssigned" = false 
+                    AND "winningCombinationId" = :winningCombinationId
+                    ORDER BY RANDOM() 
+                    LIMIT 1
+                    FOR UPDATE SKIP LOCKED
+                )
+                RETURNING *;
+            `, {
+                replacements: { winningCombinationId },
+                type: sequelize.QueryTypes.SELECT,
+                transaction: t
+            });
+
+            if (!result || result.length === 0) {
+                throw new Error('No available ticket for this competition.');
+            }
+
+            return result[0];
         });
 
-        if (!randomTicket) {
-            return res.status(400).json({ message: 'No available ticket for this competition.' });
-        }
-
-        // Step 5: Assign the ticket to the user and mark it as assigned
-        await randomTicket.update({ isAssigned: true }); // Mark as assigned
-
-        // Step 6: Create the user ticket with the assigned number and prize type
+        // Step 5: Create the user ticket with the assigned number and prize type
+        // (randomTicket is already marked as assigned in the atomic operation above)
         const newTicket = await Ticket.create({
             name,
             phone,
@@ -166,18 +221,17 @@ export const createTicket = async (req, res) => {
             winningCombinationId,
         });
 
-
-        // Check if all tickets have been used and regenerate if needed
-        const totalTickets = await GeneratedTicket.count({
-            where: { winningCombinationId, isAssigned: true },
-        });
-
-        const totalGenerated = await GeneratedTicket.count({ where: { winningCombinationId } });
-
-        if (totalTickets === totalGenerated) {
-            // Regenerate tickets if all have been assigned
-            await regenerateTickets(winningCombo, totalGenerated);
+        // Process file uploads in background if files exist
+        if (hasFiles) {
+            // Don't await - let it process in background
+            processTicketFilesAsync(newTicket.id, req.files).catch(error => {
+                console.error('Background file upload failed for ticket:', newTicket.id, error);
+            });
         }
+
+
+        // Remove expensive regeneration check from ticket creation path
+        // This can be moved to a background job or scheduled task for better performance
 
         const ticketData = { ...newTicket.get() }; // convert Sequelize instance to plain object
         delete ticketData.prizeType;               // safely remove prizeType only from the response
@@ -257,12 +311,37 @@ export const getAllTickets = async (req, res) => {
             return res.status(404).json({ success: false, message: 'No competition found' });
         }
 
+        // Get pagination parameters from query string
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = (page - 1) * limit;
+
+        // Get total count for pagination info
+        const totalTickets = await Ticket.count({
+            where: { winningCombinationId: competition.id }
+        });
+
         const tickets = await Ticket.findAll({
             where: { winningCombinationId: competition.id },
             order: [['createdAt', 'DESC']],
+            limit,
+            offset
         });
 
-        return res.status(200).json({ success: true, data: tickets });
+        const totalPages = Math.ceil(totalTickets / limit);
+
+        return res.status(200).json({ 
+            success: true, 
+            data: tickets,
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalTickets,
+                limit,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        });
     } catch (err) {
         console.error('❌ Error fetching tickets:', err);
         return res.status(500).json({ success: false, message: 'Internal server error' });

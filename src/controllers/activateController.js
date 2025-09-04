@@ -2,6 +2,47 @@ import { Activate, Ticket, WinningCombination } from '../models/index.js';
 import { Op } from 'sequelize';
 import { uploadFilesToFirebase } from '../utils/firebaseUpload.js  ';
 
+// Background file processing function for activate forms
+const processActivateFilesAsync = async (activateId, files) => {
+    const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Activate file processing timeout')), 60000)
+    );
+
+    try {
+        console.log(`🔄 Processing activate files in background for ID ${activateId}`);
+        
+        // Upload files to Firebase with timeout protection
+        const uploadedFiles = await Promise.race([
+            uploadFilesToFirebase(files),
+            timeout
+        ]);
+        
+        // Prepare update data
+        const updateData = {};
+        if (uploadedFiles && uploadedFiles.length > 0) {
+            // Map uploaded files to proper fields
+            uploadedFiles.forEach(file => {
+                if (file.key === 'ticketImage') {
+                    updateData.ticketImage = file.url;
+                } else if (file.key === 'proofImage') {
+                    updateData.proofImage = file.url;
+                } else if (file.key === 'file') {
+                    updateData.ticketImage = file.url; // Default file field
+                }
+            });
+        }
+        
+        // Update activate record with file URLs
+        await Activate.update(updateData, {
+            where: { id: activateId }
+        });
+        
+        console.log(`✅ Activate files processed successfully for ID ${activateId}`);
+    } catch (error) {
+        console.error(`❌ Failed to process activate files for ID ${activateId}:`, error);
+    }
+};
+
 // ========================
 // Submit Activate
 // ========================
@@ -26,19 +67,25 @@ export const submitActivate = async (req, res) => {
         // const proofImage = req.files?.proofImage?.[0]?.filename
         //     ? `/uploads/${req.files.proofImage[0].filename}` : '';
 
-        // Determine winningCombinationId
-        let winningCombinationId = null;
+        // Optimized: Get ticket and winning combination in fewer queries
         const ticket = await Ticket.findOne({ where: { ticketID } });
 
+        let winningCombinationId = null;
         if (ticket?.winningCombinationId) {
             winningCombinationId = ticket.winningCombinationId;
         } else {
+            // Single optimized query for active or latest ended competition
             const activeOrLatestEnded = await WinningCombination.findOne({
-                where: { status: 'active' },
-                order: [['createdAt', 'DESC']]
-            }) || await WinningCombination.findOne({
-                where: { status: 'ended' },
-                order: [['createdAt', 'DESC']]
+                where: {
+                    [Op.or]: [
+                        { status: 'active' },
+                        { status: 'ended' }
+                    ]
+                },
+                order: [
+                    ['status', 'DESC'], // 'active' comes before 'ended' alphabetically  
+                    ['createdAt', 'DESC']
+                ]
             });
 
             if (activeOrLatestEnded) {
@@ -49,7 +96,6 @@ export const submitActivate = async (req, res) => {
         if (!winningCombinationId) {
             return res.status(400).json({ success: false, message: 'Competition not found' });
         }
-        // const ticket = await Ticket.findOne({ where: { ticketID } });
 
         if (!ticket) {
             return res.status(404).json({
@@ -86,15 +132,10 @@ export const submitActivate = async (req, res) => {
             }
         }
 
-        // 4️⃣ Upload files to Firebase
+        // 4️⃣ Store files for background processing instead of blocking upload
+        const hasFiles = req.files && Object.keys(req.files).length > 0;
         let ticketImage = '';
         let proofImage = '';
-        const uploadedFiles = await uploadFilesToFirebase(req.files);
-
-        if (uploadedFiles && uploadedFiles.length > 0) {
-            ticketImage = uploadedFiles[0]?.url || '';
-            proofImage = uploadedFiles[1]?.url || '';
-        }
         // Create Activate
         const newActivate = await Activate.create({
             ticketID,
@@ -108,6 +149,14 @@ export const submitActivate = async (req, res) => {
             proofImage,
             winningCombinationId
         });
+
+        // Process file uploads in background if files exist
+        if (hasFiles) {
+            // Don't await - let it process in background
+            processActivateFilesAsync(newActivate.id, req.files).catch(error => {
+                console.error('Background activate file upload failed for ID:', newActivate.id, error);
+            });
+        }
 
         return res.status(201).json({
             success: true,
