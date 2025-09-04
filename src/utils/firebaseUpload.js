@@ -28,6 +28,7 @@ export const uploadToFirebase = async (file, key) => {
     await new Promise((resolve, reject) => {
         // Set timeout for uploads (30 seconds)
         const timeout = setTimeout(() => {
+            
             reject(new Error(`Upload timeout for file: ${file.originalname}`));
         }, 30000);
 
