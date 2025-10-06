@@ -3,4 +3,6 @@ node_modules
 dist
 .DS_Store
 src/config/serviceAccountKey.json
-*firebase-adminsdk*.json   
+*firebase-adminsdk*.json
+uploads/*
+!uploads/.gitkeep   

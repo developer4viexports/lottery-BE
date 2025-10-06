@@ -2,8 +2,13 @@ import { Op, Sequelize } from 'sequelize';
 import { Ticket, GeneratedTicket, WinningCombination, sequelize } from '../models/index.js';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import https from 'https'; // ✅ ADD THIS LINE
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { uploadFilesToFirebase } from '../utils/firebaseUpload.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -374,18 +379,8 @@ export const uploadTicketImage = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Ticket ID or image missing' });
         }
 
-        // Wrap the single file in an object structure like Multer's req.files format
-        const fakeFiles = {
-            ticketImage: [file] // key can be anything; will get the first URL
-        };
-
-        // Upload to Firebase
-        const uploaded = await uploadFilesToFirebase(fakeFiles);
-        const firebaseUrl = uploaded[0]?.url;
-
-        if (!firebaseUrl) {
-            return res.status(500).json({ success: false, message: 'Failed to upload to Firebase' });
-        }
+        // Get local file URL
+        const fileUrl = `/uploads/${file.filename}`;
 
         // Save to DB
         const ticket = await Ticket.findByPk(ticketId);
@@ -393,30 +388,19 @@ export const uploadTicketImage = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Ticket not found' });
         }
 
-        ticket.ticketImage = firebaseUrl;
+        ticket.ticketImage = fileUrl;
         await ticket.save();
 
         return res.status(200).json({
             success: true,
             message: 'Ticket image uploaded',
-            path: firebaseUrl
+            path: fileUrl
         });
 
     } catch (err) {
-        console.error('❌ Firebase ticket image upload failed:', err);
+        console.error('❌ Ticket image upload failed:', err);
         return res.status(500).json({ success: false, message: 'Server error while uploading image' });
     }
-};
-
-// Helper to download image from Firebase URL
-const downloadImageBuffer = async (url) => {
-    return new Promise((resolve, reject) => {
-        https.get(url, (res) => {
-            const data = [];
-            res.on('data', chunk => data.push(chunk));
-            res.on('end', () => resolve(Buffer.concat(data)));
-        }).on('error', reject);
-    });
 };
 
 export const sendTicketEmail = async (req, res) => {
@@ -433,14 +417,14 @@ export const sendTicketEmail = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing email or ticket image' });
         }
 
-        // Download image from Firebase URL
-        let imageBuffer;
-        try {
-            imageBuffer = await downloadImageBuffer(ticket.ticketImage);
-        } catch (err) {
-            console.error('❌ Failed to download image from Firebase:', err);
-            return res.status(500).json({ success: false, message: 'Failed to download ticket image' });
+        // Read image from local file system
+        const imagePath = path.join(__dirname, '../../', ticket.ticketImage);
+
+        if (!fs.existsSync(imagePath)) {
+            return res.status(404).json({ success: false, message: 'Ticket image file not found' });
         }
+
+        const imageBuffer = fs.readFileSync(imagePath);
 
         // Send Email
         await transporter.sendMail({
