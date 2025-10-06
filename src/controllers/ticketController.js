@@ -180,16 +180,16 @@ export const createTicket = async (req, res) => {
         }
 
         // Step 4: Get and assign a random ticket in a single atomic operation
-        const randomTicket = await sequelize.transaction(async (t) => {
+        let randomTicket = await sequelize.transaction(async (t) => {
             // Use a more efficient random selection with row locking
             const result = await sequelize.query(`
-                UPDATE "GeneratedTickets" 
+                UPDATE "GeneratedTickets"
                 SET "isAssigned" = true, "updatedAt" = NOW()
                 WHERE id = (
-                    SELECT id FROM "GeneratedTickets" 
-                    WHERE "isAssigned" = false 
+                    SELECT id FROM "GeneratedTickets"
+                    WHERE "isAssigned" = false
                     AND "winningCombinationId" = :winningCombinationId
-                    ORDER BY RANDOM() 
+                    ORDER BY RANDOM()
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED
                 )
@@ -201,7 +201,34 @@ export const createTicket = async (req, res) => {
             });
 
             if (!result || result.length === 0) {
-                throw new Error('No available ticket for this competition.');
+                // Pool is empty - trigger regeneration
+                console.log('🔄 Ticket pool empty, regenerating new batch...');
+                await regenerateTickets(winningCombo);
+
+                // Retry ticket selection after regeneration
+                const retryResult = await sequelize.query(`
+                    UPDATE "GeneratedTickets"
+                    SET "isAssigned" = true, "updatedAt" = NOW()
+                    WHERE id = (
+                        SELECT id FROM "GeneratedTickets"
+                        WHERE "isAssigned" = false
+                        AND "winningCombinationId" = :winningCombinationId
+                        ORDER BY RANDOM()
+                        LIMIT 1
+                        FOR UPDATE SKIP LOCKED
+                    )
+                    RETURNING *;
+                `, {
+                    replacements: { winningCombinationId },
+                    type: sequelize.QueryTypes.SELECT,
+                    transaction: t
+                });
+
+                if (!retryResult || retryResult.length === 0) {
+                    throw new Error('Failed to assign ticket after regeneration.');
+                }
+
+                return retryResult[0];
             }
 
             return result[0];
@@ -234,10 +261,6 @@ export const createTicket = async (req, res) => {
             });
         }
 
-
-        // Remove expensive regeneration check from ticket creation path
-        // This can be moved to a background job or scheduled task for better performance
-
         const ticketData = { ...newTicket.get() }; // convert Sequelize instance to plain object
         delete ticketData.prizeType;               // safely remove prizeType only from the response
 
@@ -250,7 +273,7 @@ export const createTicket = async (req, res) => {
 };
 
 // Regenerate tickets if all tickets are used up
-const regenerateTickets = async (winningCombo, totalGenerated) => {
+const regenerateTickets = async (winningCombo) => {
     try {
         const { grandQuota, silverQuota, bronzeQuota, consolationQuota } = winningCombo;
         const totalParticipants = winningCombo.totalParticipants;
