@@ -88,7 +88,7 @@ app.get('/', (req, res) => {
 sequelize.authenticate()
   .then(async () => {
     console.log('✅ PostgreSQL connected');
-    await sequelize.sync({ alter: true });
+    // await sequelize.sync({ alter: true });
 
     // ✅ Auto-end expired competitions
     await WinningCombination.update(
