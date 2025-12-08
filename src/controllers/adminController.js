@@ -1,6 +1,6 @@
 import { Admin } from '../models/index.js';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export const loginAdmin = async (req, res) => {
     // console.log('🔒 Login route called');

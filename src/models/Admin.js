@@ -1,5 +1,5 @@
 // src/models/Admin.js
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export default function AdminModel(sequelize, DataTypes) {
     const Admin = sequelize.define('Admin', {
