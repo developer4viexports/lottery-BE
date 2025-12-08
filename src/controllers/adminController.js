@@ -18,10 +18,10 @@ export const loginAdmin = async (req, res) => {
             console.log('❌ Admin not found:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
-        console.log('Stored hash:', admin.password);
-        console.log('Entered password:', password);
+        console.log('Stored hash: admin.password ', admin.password);
+        console.log('Entered password: password', password);
         const isMatch = await bcrypt.compare(password, admin.password);
-        console.log('Password match:', isMatch);
+        console.log('Password match: isMatch', isMatch);
         if (!isMatch) {
             console.log('❌ Wrong password for:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
