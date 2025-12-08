@@ -13,15 +13,15 @@ export const loginAdmin = async (req, res) => {
 
     try {
         const admin = await Admin.findOne({ where: { email } });
-
+        console.log('Admin-=-=-', admin);
         if (!admin) {
-            // console.log('❌ Admin not found:', email);
+            console.log('❌ Admin not found:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
-        // console.log('Stored hash:', admin.password);
-        // console.log('Entered password:', password);
+        console.log('Stored hash:', admin.password);
+        console.log('Entered password:', password);
         const isMatch = await bcrypt.compare(password, admin.password);
-        // console.log('Password match:', isMatch);
+        console.log('Password match:', isMatch);
         if (!isMatch) {
             console.log('❌ Wrong password for:', email);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
