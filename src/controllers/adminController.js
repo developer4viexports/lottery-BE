@@ -12,7 +12,7 @@ export const loginAdmin = async (req, res) => {
     }
 
     try {
-        const admin = await Admin.findOne({ where: { email } });
+        const admin = await Admin.findOne({ where: { email },raw: true });
         console.log('Admin-=-=-', admin);
         if (!admin) {
             console.log('❌ Admin not found:', email);
