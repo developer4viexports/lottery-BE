@@ -4,7 +4,6 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { Op } from 'sequelize'; // ✅ Import Op for date comparisons
 
 import routes from './routes/index.js';
 import winningTickets from './routes/winningTickets.js';
@@ -17,7 +16,7 @@ import prizeTierRoutes from './routes/prizeTierRoutes.js'; // ✅ Import prize t
 import contactRoutes from './routes/contactRoutes.js';
 import claimRoutes from './routes/claimRoutes.js';
 import urlRoutes from './routes/urlRoutes.js'; // ✅ Add import
-import { sequelize, WinningCombination } from './models/index.js'; // ✅ Include model
+import { sequelize } from './models/index.js';
 
 import './models/Admin.js';
 import './models/Ticket.js';
@@ -90,19 +89,9 @@ sequelize.authenticate()
     console.log('✅ PostgreSQL connected');
     // await sequelize.sync({ alter: true });
 
-    // ✅ Auto-end expired competitions
-    await WinningCombination.update(
-      { status: 'ended' },
-      {
-        where: {
-          status: 'active',
-          endDate: {
-            [Op.lt]: new Date()
-          }
-        }
-      }
-    );
-    console.log('🔁 Expired competitions marked as ended.');
+    // ⚠️ REMOVED: Auto-end expired competitions on startup
+    // Competitions should only be ended manually by admin
+    // This prevents accidental competition ending due to server crashes/restarts
 
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
