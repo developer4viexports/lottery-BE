@@ -1,6 +1,7 @@
 import { Admin } from '../models/index.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 export const loginAdmin = async (req, res) => {
     // console.log('🔒 Login route called');
@@ -46,4 +47,44 @@ export const loginAdmin = async (req, res) => {
         console.error('Login error:', err);
         res.status(500).json({ success: false, message: 'Server error' });
     }
+};
+
+export const verifyComboPassword = async (req, res) => {
+    const { password } = req.body;
+
+    if (!password) {
+        return res.status(400).json({
+            success: false,
+            message: 'Password is required'
+        });
+    }
+
+    const comboPassword = process.env.COMBO_VIEW_PASSWORD;
+
+    if (!comboPassword) {
+        console.error('COMBO_VIEW_PASSWORD not configured in environment');
+        return res.status(500).json({
+            success: false,
+            message: 'Server configuration error'
+        });
+    }
+
+    // Timing-safe comparison to prevent timing attacks
+    const passwordBuffer = Buffer.from(password);
+    const comboPasswordBuffer = Buffer.from(comboPassword);
+
+    const isMatch = passwordBuffer.length === comboPasswordBuffer.length &&
+        crypto.timingSafeEqual(passwordBuffer, comboPasswordBuffer);
+
+    if (!isMatch) {
+        return res.status(401).json({
+            success: false,
+            message: 'Invalid password'
+        });
+    }
+
+    res.status(200).json({
+        success: true,
+        message: 'Access granted'
+    });
 };
