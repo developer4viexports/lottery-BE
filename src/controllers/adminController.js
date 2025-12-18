@@ -1,7 +1,6 @@
-import { Admin } from '../models/index.js';
+import { Admin, AppSettings } from '../models/index.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 
 export const loginAdmin = async (req, res) => {
     // console.log('🔒 Login route called');
@@ -59,32 +58,97 @@ export const verifyComboPassword = async (req, res) => {
         });
     }
 
-    const comboPassword = process.env.COMBO_VIEW_PASSWORD;
+    try {
+        const isMatch = await AppSettings.verifyComboPassword(password);
 
-    if (!comboPassword) {
-        console.error('COMBO_VIEW_PASSWORD not configured in environment');
-        return res.status(500).json({
+        if (!isMatch) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid password'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Access granted'
+        });
+    } catch (err) {
+        console.error('Combo password verification error:', err);
+        res.status(500).json({
             success: false,
-            message: 'Server configuration error'
+            message: 'Server error'
+        });
+    }
+};
+
+export const updateComboPassword = async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!newPassword) {
+        return res.status(400).json({
+            success: false,
+            message: 'New password is required'
         });
     }
 
-    // Timing-safe comparison to prevent timing attacks
-    const passwordBuffer = Buffer.from(password);
-    const comboPasswordBuffer = Buffer.from(comboPassword);
-
-    const isMatch = passwordBuffer.length === comboPasswordBuffer.length &&
-        crypto.timingSafeEqual(passwordBuffer, comboPasswordBuffer);
-
-    if (!isMatch) {
-        return res.status(401).json({
+    if (newPassword.length < 6) {
+        return res.status(400).json({
             success: false,
-            message: 'Invalid password'
+            message: 'New password must be at least 6 characters'
         });
     }
 
-    res.status(200).json({
-        success: true,
-        message: 'Access granted'
-    });
+    try {
+        // Check if password exists in DB
+        const existingPassword = await AppSettings.getSetting('combo_view_password');
+
+        if (existingPassword) {
+            // Password exists - require current password
+            if (!currentPassword) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Current password is required'
+                });
+            }
+
+            // Verify current password
+            const isMatch = await AppSettings.verifyComboPassword(currentPassword);
+            if (!isMatch) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Current password is incorrect'
+                });
+            }
+        }
+
+        // Set new password (hashed)
+        await AppSettings.setComboPassword(newPassword);
+
+        res.status(200).json({
+            success: true,
+            message: 'Password updated successfully'
+        });
+    } catch (err) {
+        console.error('Update combo password error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+};
+
+export const checkComboPasswordExists = async (req, res) => {
+    try {
+        const existingPassword = await AppSettings.getSetting('combo_view_password');
+        res.status(200).json({
+            success: true,
+            exists: !!existingPassword
+        });
+    } catch (err) {
+        console.error('Check combo password error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
 };

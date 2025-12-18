@@ -42,6 +42,7 @@ import PrizeTierModel from './PrizeTier.js';
 import ContactMessageModel from './ContactMessage.js'; // Import ContactMessage model
 import ClaimModel from './Claim.js'; // ✅ NEW: Claim model
 import UrlCollectionModel from './UrlCollection.js'; // Import UrlCollection model
+import AppSettingsModel from './AppSettings.js'; // Import AppSettings model
 
 // Initialize models
 const Admin = AdminModel(sequelize, DataTypes);
@@ -54,6 +55,7 @@ const PrizeTier = PrizeTierModel(sequelize, DataTypes);
 const ContactMessage = ContactMessageModel(sequelize, DataTypes); // Initialize ContactMessage model
 const Claim = ClaimModel(sequelize, DataTypes); // ✅ Initialize Claim
 const UrlCollection = UrlCollectionModel(sequelize, DataTypes); // ✅ Initialize
+const AppSettings = AppSettingsModel(sequelize, DataTypes); // ✅ Initialize AppSettings
 // ✅ Setup Associations
 
 // One WinningCombination has many Tickets
@@ -104,9 +106,10 @@ export {
     Ticket,
     WinningTicket,
     WinningCombination,
-    GeneratedTicket,  // Added export for GeneratedTicket
+    GeneratedTicket,
     PrizeTier,
     ContactMessage,
-    Claim, // ✅ Export Claim
-    UrlCollection, // Export UrlCollection model
+    Claim,
+    UrlCollection,
+    AppSettings,
 };
